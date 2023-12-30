@@ -18,7 +18,7 @@ struct Args {
     output: String,
 
 
-    /// Separator between each field (timed, status code, stdout, stderr) of the task results
+    /// Separator between each field (Cmd, timed, status code, stdout, stderr) of the task results
     #[arg(short, long, default_value_t=String::from_str(",").unwrap())]
     sep: String,
 
@@ -35,32 +35,24 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let (tx, rx) = mpsc::channel(50);
+    let (tx, rx) = mpsc::channel(1000);
 
     let writer = multitasker::Writer::new(rx, args.output, args.sep, args.task_sep);
 
     let writer_handle = writer.run();
 
-    let mut handles = Vec::new();
-
     for line in fs::read_to_string(args.input).expect("Failed to open input file").lines(){
         let t = tx.clone();
         let l = String::from_str(line).unwrap();
-        let handle = tokio::task::spawn(async move{
+        tokio::task::spawn(async move{
             let i = Instant::now();
             let out = tasks::run_task(&l);
             let elapsed = i.elapsed();
-            t.send(multitasker::TimedOutput{o : out, d : elapsed}).await.unwrap();
             if args.verbose{
                 println!("Done task \"{}\"", &l);
             }
+            t.send(multitasker::TimedOutput{o : out, d : elapsed, s:l}).await.unwrap();
         });
-        handles.push(handle);
-    }
-
-    // wait for all tasks to end
-    for handle in handles{
-        handle.await.expect("Failed to wait for task to end");
     }
 
     drop(tx);

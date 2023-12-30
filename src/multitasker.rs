@@ -5,7 +5,8 @@ use std::str;
 
 pub struct TimedOutput{
     pub d : Duration, 
-    pub o : Output
+    pub o : Output,
+    pub s : String
 }
 
 pub struct Writer{
@@ -33,6 +34,11 @@ impl Writer{
                     }else{
                         self.first = false;
                     }
+                    self.output.write_all("\"".as_bytes()).expect("Failed to write file");
+                    self.output.write_all(out.s.as_bytes()).expect("Failed to write file");
+                    self.output.write_all("\"".as_bytes()).expect("Failed to write file");
+                    self.output.write_all(self.sep.as_bytes()).expect("Failed to write file");
+
                     self.output.write_all(out.d.as_millis().to_string().as_bytes()).expect("Failed to write file");
                     self.output.write_all(self.sep.as_bytes()).expect("Failed to write file");
 
